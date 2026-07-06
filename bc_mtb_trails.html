@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BC Trail Contours — Mountain Bike Map</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fjalla+One&family=IBM+Plex+Mono:wght@400;500;600&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --forest-deep:#16302A;
+    --forest:#2C5530;
+    --moss:#6B8F5A;
+    --granite:#52514C;
+    --fog:#EDEBE4;
+    --snow:#FAFAF7;
+    --rust:#C1652F;
+    --easy:#3F8F4F;
+    --inter:#2F6FA8;
+    --diff:#262626;
+    --extreme:#8B1A1A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;font-family:'Work Sans',sans-serif;background:var(--forest-deep);color:var(--snow);}
+  #app{position:relative;width:100vw;height:100vh;overflow:hidden;}
+  #map{position:absolute;inset:0;background:#dfe6dd;}
+
+  /* Contour-line signature background behind the sidebar */
+  .contour-bg{
+    position:absolute; inset:0; z-index:0; opacity:0.14; pointer-events:none;
+  }
+
+  #sidebar{
+    position:absolute; top:0; left:0; bottom:0; width:320px; z-index:1000;
+    background:var(--forest-deep);
+    border-right:1px solid rgba(255,255,255,0.08);
+    display:flex; flex-direction:column;
+    transition:transform 0.25s ease;
+    box-shadow:6px 0 20px rgba(0,0,0,0.25);
+  }
+  #sidebar.collapsed{ transform:translateX(-320px); }
+
+  .brand{
+    padding:22px 20px 14px 20px;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+    position:relative; z-index:1;
+  }
+  .brand h1{
+    font-family:'Fjalla One',sans-serif;
+    font-size:28px; letter-spacing:0.5px; margin:0 0 2px 0;
+    line-height:1;
+    color:var(--snow);
+  }
+  .brand h1 span{color:var(--rust);}
+  .brand p{
+    margin:6px 0 0 0; font-size:12px; color:var(--moss); font-family:'IBM Plex Mono',monospace;
+    letter-spacing:0.4px;
+  }
+
+  .panel{ padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.08); position:relative; z-index:1;}
+  .panel h2{
+    font-family:'Fjalla One',sans-serif; font-size:13px; letter-spacing:1.4px; text-transform:uppercase;
+    color:var(--fog); margin:0 0 10px 0; opacity:0.7;
+  }
+
+  .quick-jump{ display:flex; flex-wrap:wrap; gap:6px; }
+  .quick-jump button{
+    background:rgba(255,255,255,0.06); color:var(--fog); border:1px solid rgba(255,255,255,0.12);
+    padding:6px 10px; border-radius:3px; font-size:12px; cursor:pointer; font-family:'Work Sans',sans-serif;
+    transition:background 0.15s, border-color 0.15s;
+  }
+  .quick-jump button:hover{ background:rgba(255,255,255,0.14); border-color:var(--moss); }
+
+  .search-btn{
+    width:100%; background:var(--rust); color:var(--snow); border:none; padding:12px 14px;
+    border-radius:3px; font-size:14px; font-weight:600; cursor:pointer; font-family:'Work Sans',sans-serif;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    transition:background 0.15s, transform 0.1s;
+  }
+  .search-btn:hover{ background:#a8541f; }
+  .search-btn:active{ transform:scale(0.98); }
+  .search-btn:disabled{ background:var(--granite); cursor:default; }
+
+  .status-line{
+    margin-top:10px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--moss); min-height:16px;
+  }
+
+  .legend-item{ display:flex; align-items:center; gap:10px; font-size:13px; margin-bottom:8px; color:var(--fog); }
+  .legend-item:last-child{ margin-bottom:0; }
+  .dot{ width:12px; height:12px; border-radius:50%; flex-shrink:0; border:2px solid rgba(255,255,255,0.5); }
+
+  .filter-row{ display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:9px; color:var(--fog); cursor:pointer; }
+  .filter-row:last-child{margin-bottom:0;}
+  .filter-row input{ accent-color:var(--rust); width:15px; height:15px; cursor:pointer; }
+
+  .stat-block{ display:flex; gap:18px; }
+  .stat{ font-family:'IBM Plex Mono',monospace; }
+  .stat .num{ font-size:22px; color:var(--snow); font-weight:600; display:block; line-height:1;}
+  .stat .lbl{ font-size:10.5px; color:var(--moss); letter-spacing:0.5px; text-transform:uppercase; }
+
+  .footer-note{ margin-top:auto; padding:14px 20px; font-size:10.5px; color:var(--granite); border-top:1px solid rgba(255,255,255,0.08); line-height:1.5; }
+  .footer-note a{ color:var(--moss); }
+
+  #toggle-sidebar{
+    position:absolute; top:16px; left:16px; z-index:1001;
+    background:var(--forest-deep); color:var(--snow); border:1px solid rgba(255,255,255,0.15);
+    width:38px; height:38px; border-radius:4px; cursor:pointer; font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+    transition:left 0.25s ease;
+  }
+  #toggle-sidebar.shifted{ left:336px; }
+
+  .leaflet-popup-content-wrapper{
+    background:var(--forest-deep); color:var(--fog); border-radius:4px;
+  }
+  .leaflet-popup-tip{ background:var(--forest-deep); }
+  .popup-title{ font-family:'Fjalla One',sans-serif; font-size:16px; margin:0 0 6px 0; color:var(--snow); }
+  .popup-row{ font-size:12px; margin-bottom:3px; font-family:'IBM Plex Mono',monospace; }
+  .popup-row b{ color:var(--moss); font-weight:500; }
+  .diff-badge{ display:inline-block; padding:1px 7px; border-radius:9px; font-size:11px; font-weight:600; color:#fff; }
+
+  @media (max-width: 720px){
+    #sidebar{ width:86vw; }
+    #sidebar.collapsed{ transform:translateX(-86vw); }
+    #toggle-sidebar.shifted{ left:calc(86vw + 16px); }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="map"></div>
+  <button id="toggle-sidebar" title="Toggle panel">☰</button>
+
+  <div id="sidebar">
+    <svg class="contour-bg" viewBox="0 0 320 900" preserveAspectRatio="none">
+      <path d="M-20 100 Q 100 60 160 110 T 340 90" stroke="#ffffff" stroke-width="1" fill="none"/>
+      <path d="M-20 160 Q 100 120 160 170 T 340 150" stroke="#ffffff" stroke-width="1" fill="none"/>
+      <path d="M-20 220 Q 100 180 160 230 T 340 210" stroke="#ffffff" stroke-width="1" fill="none"/>
+      <path d="M-20 500 Q 120 460 180 510 T 340 490" stroke="#ffffff" stroke-width="1" fill="none"/>
+      <path d="M-20 560 Q 120 520 180 570 T 340 550" stroke="#ffffff" stroke-width="1" fill="none"/>
+      <path d="M-20 620 Q 120 580 180 630 T 340 610" stroke="#ffffff" stroke-width="1" fill="none"/>
+    </svg>
+
+    <div class="brand">
+      <h1>TRAIL<span>·</span>CONTOURS</h1>
+      <p>BC MOUNTAIN BIKE TRAIL MAP · OSM DATA</p>
+    </div>
+
+    <div class="panel">
+      <h2>Jump to region</h2>
+      <div class="quick-jump" id="quickJump"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Load trails</h2>
+      <button class="search-btn" id="searchBtn">⟳ Search this area</button>
+      <div class="status-line" id="statusLine">Pan or jump to a region, then search.</div>
+      <div class="stat-block" style="margin-top:12px;">
+        <div class="stat"><span class="num" id="statTrails">0</span><span class="lbl">Trails</span></div>
+        <div class="stat"><span class="num" id="statKm">0</span><span class="lbl">Approx km</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Difficulty filter</h2>
+      <label class="filter-row"><input type="checkbox" data-diff="easy" checked><span class="dot" style="background:var(--easy)"></span> Easy (green)</label>
+      <label class="filter-row"><input type="checkbox" data-diff="inter" checked><span class="dot" style="background:var(--inter)"></span> Intermediate (blue)</label>
+      <label class="filter-row"><input type="checkbox" data-diff="diff" checked><span class="dot" style="background:var(--diff)"></span> Difficult (black)</label>
+      <label class="filter-row"><input type="checkbox" data-diff="extreme" checked><span class="dot" style="background:var(--extreme)"></span> Extreme (dbl black)</label>
+      <label class="filter-row"><input type="checkbox" data-diff="unknown" checked><span class="dot" style="background:#999"></span> Unrated</label>
+    </div>
+
+    <div class="footer-note">
+      Trail geometry &amp; ratings from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors, queried live via the Overpass API. Coverage varies by region — busier areas (North Shore, Squamish, Whistler, Fernie, Rossland...) tend to be well-mapped; remote trails may be missing or unrated.
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+(function(){
+  const map = L.map('map', { zoomControl:false }).setView([49.28, -123.14], 11); // North Shore, Vancouver default
+  L.control.zoom({position:'bottomright'}).addTo(map);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const regions = [
+    {name:"North Shore", lat:49.365, lon:-123.05, z:13},
+    {name:"Squamish", lat:49.70, lon:-123.15, z:12},
+    {name:"Whistler", lat:50.10, lon:-122.95, z:12},
+    {name:"Kelowna", lat:49.89, lon:-119.50, z:12},
+    {name:"Nelson", lat:49.49, lon:-117.29, z:12},
+    {name:"Rossland", lat:49.08, lon:-117.80, z:13},
+    {name:"Cumberland", lat:49.62, lon:-125.03, z:13},
+    {name:"Fernie", lat:49.50, lon:-115.06, z:12},
+  ];
+
+  const quickJump = document.getElementById('quickJump');
+  regions.forEach(r=>{
+    const btn = document.createElement('button');
+    btn.textContent = r.name;
+    btn.onclick = ()=> map.setView([r.lat, r.lon], r.z);
+    quickJump.appendChild(btn);
+  });
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.getElementById('toggle-sidebar');
+  let sidebarOpen = true;
+  toggleBtn.addEventListener('click', ()=>{
+    sidebarOpen = !sidebarOpen;
+    sidebar.classList.toggle('collapsed', !sidebarOpen);
+    toggleBtn.classList.toggle('shifted', sidebarOpen);
+    setTimeout(()=>map.invalidateSize(), 260);
+  });
+  toggleBtn.classList.add('shifted');
+
+  const statusLine = document.getElementById('statusLine');
+  const searchBtn = document.getElementById('searchBtn');
+  const statTrails = document.getElementById('statTrails');
+  const statKm = document.getElementById('statKm');
+
+  let trailLayer = L.layerGroup().addTo(map);
+  let allFeatures = []; // {layer, diffClass}
+
+  const diffColors = { easy:'#3F8F4F', inter:'#2F6FA8', diff:'#262626', extreme:'#8B1A1A', unknown:'#999999' };
+  const diffLabels = { easy:'Easy', inter:'Intermediate', diff:'Difficult', extreme:'Extreme', unknown:'Unrated' };
+
+  function classify(scale){
+    if (scale === null || scale === undefined || isNaN(scale)) return 'unknown';
+    if (scale <= 1) return 'easy';
+    if (scale === 2) return 'inter';
+    if (scale === 3 || scale === 4) return 'diff';
+    return 'extreme'; // 5, 6
+  }
+
+  function haversine(a, b){
+    const R = 6371;
+    const toRad = d => d * Math.PI/180;
+    const dLat = toRad(b[0]-a[0]);
+    const dLon = toRad(b[1]-a[1]);
+    const lat1 = toRad(a[0]);
+    const lat2 = toRad(b[0]);
+    const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+    return R * 2 * Math.asin(Math.sqrt(h));
+  }
+
+  function lineLengthKm(coords){
+    let total = 0;
+    for (let i=1;i<coords.length;i++) total += haversine(coords[i-1], coords[i]);
+    return total;
+  }
+
+  async function searchArea(){
+    const b = map.getBounds();
+    const bbox = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
+    const areaKm2 = (haversine([b.getSouth(),b.getWest()],[b.getSouth(),b.getEast()]) * haversine([b.getSouth(),b.getWest()],[b.getNorth(),b.getWest()]));
+    if (areaKm2 > 4000) {
+      statusLine.textContent = "Zoom in a bit further — area too large for one query.";
+      return;
+    }
+
+    searchBtn.disabled = true;
+    statusLine.textContent = "Querying OpenStreetMap (Overpass)...";
+    trailLayer.clearLayers();
+    allFeatures = [];
+
+    const query = `
+      [out:json][timeout:25];
+      (
+        way["mtb:scale"](${bbox});
+        way["mtb:scale:uphill"](${bbox});
+        way["route"="mtb"](${bbox});
+        relation["route"="mtb"](${bbox});
+      );
+      out geom;
+    `;
+
+    try {
+      const resp = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        body: 'data=' + encodeURIComponent(query)
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      renderElements(data.elements || []);
+    } catch(err){
+      statusLine.textContent = "Query failed — Overpass may be busy. Try again in a moment.";
+      console.error(err);
+    } finally {
+      searchBtn.disabled = false;
+    }
+  }
+
+  function renderElements(elements){
+    let totalKm = 0;
+    let count = 0;
+    const seenWayIds = new Set();
+
+    function addWay(el){
+      if (!el.geometry || el.geometry.length < 2) return;
+      if (seenWayIds.has(el.id)) return;
+      seenWayIds.add(el.id);
+
+      const coords = el.geometry.map(p => [p.lat, p.lon]);
+      const tags = el.tags || {};
+      const scaleRaw = tags['mtb:scale'];
+      const scale = scaleRaw !== undefined ? parseInt(scaleRaw.toString().replace(/[^0-9]/g,''), 10) : NaN;
+      const diffClass = classify(scale);
+      const name = tags.name || 'Unnamed trail';
+      const km = lineLengthKm(coords);
+      totalKm += km;
+      count++;
+
+      const line = L.polyline(coords, {
+        color: diffColors[diffClass],
+        weight: 4,
+        opacity: 0.9
+      });
+
+      const badgeColor = diffColors[diffClass];
+      line.bindPopup(`
+        <div class="popup-title">${escapeHtml(name)}</div>
+        <div class="popup-row"><span class="diff-badge" style="background:${badgeColor}">${diffLabels[diffClass]}</span></div>
+        <div class="popup-row"><b>Length:</b> ${km.toFixed(2)} km</div>
+        ${tags.surface ? `<div class="popup-row"><b>Surface:</b> ${escapeHtml(tags.surface)}</div>` : ''}
+        ${tags['mtb:scale'] ? `<div class="popup-row"><b>mtb:scale:</b> ${escapeHtml(tags['mtb:scale'])}</div>` : ''}
+        <div class="popup-row"><b>OSM way:</b> <a href="https://www.openstreetmap.org/way/${el.id}" target="_blank" style="color:var(--moss)">#${el.id}</a></div>
+      `);
+
+      line._diffClass = diffClass;
+      allFeatures.push(line);
+    }
+
+    elements.forEach(el=>{
+      if (el.type === 'way') addWay(el);
+      else if (el.type === 'relation' && el.members){
+        el.members.forEach(m=>{ if (m.type==='way' && m.geometry) addWay({id:m.ref, geometry:m.geometry, tags: el.tags}); });
+      }
+    });
+
+    applyFilters();
+    statTrails.textContent = count;
+    statKm.textContent = totalKm.toFixed(0);
+    statusLine.textContent = count > 0
+      ? `Loaded ${count} trail segment(s).`
+      : "No tagged MTB trails found here. Try a known trail town or zoom out slightly.";
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+
+  function applyFilters(){
+    trailLayer.clearLayers();
+    const active = new Set();
+    document.querySelectorAll('.filter-row input').forEach(cb=>{ if (cb.checked) active.add(cb.dataset.diff); });
+    allFeatures.forEach(line=>{
+      if (active.has(line._diffClass)) trailLayer.addLayer(line);
+    });
+  }
+
+  document.querySelectorAll('.filter-row input').forEach(cb=> cb.addEventListener('change', applyFilters));
+  searchBtn.addEventListener('click', searchArea);
+})();
+</script>
+</body>
+</html>
