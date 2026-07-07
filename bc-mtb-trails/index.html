@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BC Trail Contours — Mountain Bike Map</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fjalla+One&family=IBM+Plex+Mono:wght@400;500;600&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div id="map"></div>
+  <button id="toggle-sidebar" title="Toggle panel">☰</button>
+
+  <div id="sidebar">
+    <svg class="contour-bg" viewBox="0 0 320 900" preserveAspectRatio="none">
+      <path d="M-20 100 Q 100 60 160 110 T 340 90" stroke="#ffffff" stroke-width="1" fill="none"/>
+      <path d="M-20 160 Q 100 120 160 170 T 340 150" stroke="#ffffff" stroke-width="1" fill="none"/>
+      <path d="M-20 220 Q 100 180 160 230 T 340 210" stroke="#ffffff" stroke-width="1" fill="none"/>
+      <path d="M-20 500 Q 120 460 180 510 T 340 490" stroke="#ffffff" stroke-width="1" fill="none"/>
+      <path d="M-20 560 Q 120 520 180 570 T 340 550" stroke="#ffffff" stroke-width="1" fill="none"/>
+      <path d="M-20 620 Q 120 580 180 630 T 340 610" stroke="#ffffff" stroke-width="1" fill="none"/>
+    </svg>
+
+    <div class="brand">
+      <h1>TRAIL<span>·</span>CONTOURS</h1>
+      <p>BC MOUNTAIN BIKE TRAIL MAP · OSM DATA</p>
+    </div>
+
+    <div class="panel">
+      <h2>Jump to region</h2>
+      <div class="quick-jump" id="quickJump"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Load trails</h2>
+      <button class="search-btn" id="searchBtn">⟳ Search this area</button>
+      <div class="status-line" id="statusLine">Pan or jump to a region, then search.</div>
+      <div class="stat-block" style="margin-top:12px;">
+        <div class="stat"><span class="num" id="statTrails">0</span><span class="lbl">Trails</span></div>
+        <div class="stat"><span class="num" id="statKm">0</span><span class="lbl">Approx km</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Difficulty filter</h2>
+      <label class="filter-row"><input type="checkbox" data-diff="easy" checked><span class="dot" style="background:var(--easy)"></span> Easy (green)</label>
+      <label class="filter-row"><input type="checkbox" data-diff="inter" checked><span class="dot" style="background:var(--inter)"></span> Intermediate (blue)</label>
+      <label class="filter-row"><input type="checkbox" data-diff="diff" checked><span class="dot" style="background:var(--diff)"></span> Difficult (black)</label>
+      <label class="filter-row"><input type="checkbox" data-diff="extreme" checked><span class="dot" style="background:var(--extreme)"></span> Extreme (dbl black)</label>
+      <label class="filter-row"><input type="checkbox" data-diff="unknown" checked><span class="dot" style="background:#999"></span> Unrated</label>
+    </div>
+
+    <div class="footer-note">
+      Trail geometry &amp; ratings from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors, queried live via the Overpass API. Coverage varies by region — busier areas (North Shore, Squamish, Whistler, Fernie, Rossland...) tend to be well-mapped; remote trails may be missing or unrated.
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
