@@ -110,6 +110,9 @@ html,body{margin:0;padding:0;height:100%;font-family:'Work Sans',sans-serif;back
 .popup-row b{ color:var(--moss); font-weight:500; }
 .diff-badge{ display:inline-block; padding:1px 7px; border-radius:9px; font-size:11px; font-weight:600; color:#fff; }
 
+.video-link{ color:var(--rust); text-decoration:none; font-weight:600; transition:color 0.15s; }
+.video-link:hover{ color:#ff9966; text-decoration:underline; }
+
 @media (max-width: 720px){
   #sidebar{ width:86vw; }
   #sidebar.collapsed{ transform:translateX(-86vw); }

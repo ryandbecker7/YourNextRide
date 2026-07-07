@@ -167,6 +167,7 @@
       });
 
       const badgeColor = diffColors[diffClass];
+      const youtubeSearchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(name + ' mountain bike')}`;
       line.bindPopup(`
         <div class="popup-title">${escapeHtml(name)}</div>
         <div class="popup-row"><span class="diff-badge" style="background:${badgeColor}">${diffLabels[diffClass]}</span></div>
@@ -174,6 +175,7 @@
         ${tags.surface ? `<div class="popup-row"><b>Surface:</b> ${escapeHtml(tags.surface)}</div>` : ''}
         ${tags['mtb:scale'] ? `<div class="popup-row"><b>mtb:scale:</b> ${escapeHtml(tags['mtb:scale'])}</div>` : ''}
         <div class="popup-row"><b>OSM way:</b> <a href="https://www.openstreetmap.org/way/${el.id}" target="_blank" style="color:var(--moss)">#${el.id}</a></div>
+        <div class="popup-row" style="margin-top:10px;"><a href="${youtubeSearchUrl}" target="_blank" class="video-link">▶ Watch videos on YouTube</a></div>
       `);
 
       line._diffClass = diffClass;
